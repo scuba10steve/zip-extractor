@@ -1,6 +1,17 @@
-import zipfile
-import os
 import argparse
+import os
+import zipfile
+from concurrent.futures import ThreadPoolExecutor, wait
+
+
+def extract(entry: os.DirEntry, destination: str):
+    if '.zip' in entry.name:
+        print("unzipping '{}'".format(entry.name))
+        zipped = zipfile.ZipFile(entry.path)
+        zipped.extractall(path=destination)
+        print("unzipped '{}'".format(entry.name))
+    else:
+        print("skipping '{}'".format(entry.name))
 
 
 def main():
@@ -12,14 +23,13 @@ def main():
     source = args.input
     destination = args.output
 
+    submissions = {}
+    executor = ThreadPoolExecutor()
+
     for entry in os.scandir(source):
-        if '.zip' in entry.name:
-            print("unzipping '{}'".format(entry.name))
-            zipped = zipfile.ZipFile(entry.path)
-            zipped.extractall(path=os.path.join(destination, entry.name))
-            print("unzipped '{}'".format(entry.name))
-        else:
-            print("skipping '{}'".format(entry.name))
+        submissions[executor.submit(extract, entry, destination)] = entry.name
+
+    _, _ = wait(submissions)
 
 
 if __name__ == "__main__":
